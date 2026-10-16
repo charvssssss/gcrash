@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>GCrash Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+:root{--blue:#0a63ff;--blue-d:#0040b8;--blue-l:#e8f0ff;--ink:#1b2437;--muted:#6b7690;--page:#222427;--white:#fff;--ok:#12b76a;--bad:#e5384f;
+ box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:dark}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--page:#222427}}
+:root[data-theme="dark"]{--page:#222427}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+html,body{height:100%;margin:0}
+body{background:var(--page);display:grid;place-items:center;font-family:"Trebuchet MS","Segoe UI",system-ui,sans-serif;color:var(--ink);overflow:hidden}
+button{font:inherit;cursor:pointer;border:0}
+html{-webkit-text-size-adjust:100%}
+body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+input{-webkit-user-select:text;user-select:text}
+.phone{position:relative;overflow:hidden;background:var(--white);height:min(100%,860px);width:min(100%,calc(min(100dvh,860px)*9/19));container-type:inline-size;border-radius:28px;box-shadow:0 20px 60px #000a}
+@media(max-width:440px){.phone{border-radius:0}}
+.screen{position:absolute;inset:0;display:none;flex-direction:column}
+.screen.active{display:flex}
+.spin{width:38px;height:38px;border:4px solid #fff4;border-top-color:#fff;border-radius:50%;animation:rot .8s linear infinite}
+@keyframes rot{to{transform:rotate(360deg)}}
+@keyframes shake{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+.shake{animation:shake .3s}
+#hud{position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:90;background:#000b;color:#fff;font:700 12px/1 ui-monospace,monospace;padding:5px 10px;border-radius:99px;pointer-events:none}
+.gone{display:none!important}
+
+/* Boot + login */
+#s-home,#s-boot{background:var(--blue);align-items:center;justify-content:center;gap:22px;color:#fff}
+.logo{display:flex;align-items:center;gap:10px;font-size:40px;font-weight:900;letter-spacing:-1px}
+.logo b{display:grid;place-items:center;width:58px;height:58px;border-radius:50%;background:#fff;color:var(--blue);font-size:38px}
+#login{position:absolute;left:0;right:0;bottom:0;background:#fff;color:var(--ink);border-radius:26px 26px 0 0;padding:20px 18px 18px;transform:translateY(105%);transition:transform .5s;text-align:center}
+#login.up{transform:none}
+#login h2{margin:0 0 4px;font-size:18px}
+#login small{color:var(--muted);font-size:12px}
+#dots{display:flex;justify-content:center;gap:14px;margin:14px 0}
+#dots i{width:16px;height:16px;border-radius:50%;border:2px solid var(--blue)}
+#dots i.on{background:var(--blue)}
+#mpinErr{color:var(--bad);font-size:12px;min-height:16px;font-weight:700}
+.keys{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px}
+.keys button{background:var(--blue-l);color:var(--blue-d);font-size:22px;font-weight:700;padding:13px 0;border-radius:14px}
+.keys button:active{background:#c9dbff}
+.keys .ok{background:var(--blue);color:#fff}
+
+.logo b{position:relative}.logo b i{position:absolute;right:-9px;bottom:-7px;font-size:22px;font-style:normal}
+.cap{max-width:250px;text-align:center;font-size:14px;font-weight:700}
+.by{margin-top:-14px;font-size:13px;font-weight:700;letter-spacing:.05em;opacity:.9}
+.link{background:none;color:var(--blue);font-weight:700;font-size:13px;text-align:left;padding:0}
+#sms{position:absolute;left:8px;right:8px;top:34px;z-index:85;background:#f2f2f7;color:#111;border-radius:16px;padding:10px 12px;font-size:12px;line-height:1.35;box-shadow:0 8px 24px #0007;transform:translateY(-160%);transition:transform .35s;text-align:left}
+#sms.show{transform:none}
+#sms b{display:block;font-size:10px;color:#666;margin-bottom:3px}
+.rtop{background:var(--blue);padding:34px 16px 78px;display:flex;justify-content:center;color:#fff}
+.rbody{margin-top:-58px}
+.ticket{position:relative;background:#fff;border-radius:16px;padding:18px 16px 20px;box-shadow:0 8px 24px #0a63ff33;margin-bottom:24px}
+.ticket::after{content:"";position:absolute;left:0;right:0;bottom:-9px;height:10px;background:linear-gradient(135deg,#fff 5px,transparent 0) 0 0/10px 10px,linear-gradient(225deg,#fff 5px,transparent 0) 0 0/10px 10px}
+.rtick{width:52px;height:52px;margin:-44px auto 8px;border-radius:50%;background:var(--ok);color:#fff;font-size:30px;display:grid;place-items:center;border:4px solid #fff}
+.rttl{font-size:18px;font-weight:900;color:var(--blue-d)}
+.rsub{font-size:12px;color:var(--muted)}
+.ramt{font-size:32px;font-weight:900;color:var(--blue);margin:6px 0 10px}
+.rrow{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:7px 0;border-bottom:1px dashed #d5dcee}
+.rrow span{color:var(--muted)}
+.rdiv{margin:10px 0}
+.start{background:#fff;color:var(--blue);font-weight:900;font-size:20px;padding:16px 60px;border-radius:99px;box-shadow:0 5px 0 #b8cffa;margin-top:8px}
+.start:active{transform:translateY(3px);box-shadow:0 2px 0 #b8cffa}
+#s-home{gap:14px;padding:0 6%}
+.how{width:100%;background:#ffffff22;border:1px solid #ffffff55;border-radius:14px;padding:12px 14px;text-align:left;font-size:13px;line-height:1.4}
+.how ol{margin:6px 0 4px;padding-left:20px}
+.how li{margin:3px 0}
+.how small{opacity:.85}
+#otpBatt{background:#fff;color:#e5384f;font:800 12px system-ui,sans-serif;padding:3px 9px;border-radius:99px}
+#lowbat{position:absolute;inset:0;z-index:95;display:none;align-items:center;justify-content:center;background:#0006}
+#lowbat.on{display:flex}
+#sure{position:absolute;inset:0;z-index:60;display:none;align-items:center;justify-content:center;background:#000a;padding:24px}
+#sure.on{display:flex}
+#sure .card{text-align:center}
+#sureRow{display:flex;gap:10px;margin-top:4px}
+#sureRow.swp{flex-direction:row-reverse}
+#sureRow .btn{flex:1}
+.ios{width:72%;background:#f2f2f7;border-radius:14px;text-align:center;overflow:hidden;font-family:-apple-system,"SF Pro Text","Helvetica Neue",Arial,sans-serif;box-shadow:0 10px 40px #0006;color:#000}
+.ios-t{padding:18px 16px 16px}
+.ios-t b{display:block;font-size:17px;font-weight:600;margin-bottom:4px}
+.ios-t span{font-size:13px}
+.ios button{display:block;width:100%;background:none;border-top:1px solid #3c3c4349;padding:13px;font-size:17px;color:#007aff}
+.ios #btnBattClose{font-weight:600}
+/* Auth */
+#s-auth{background:var(--blue);color:#fff;align-items:center;justify-content:center;gap:14px;padding:0 36px;text-align:center}
+#s-auth h2{margin:0;font-size:26px}
+.bar{width:100%;height:10px;background:#fff3;border-radius:9px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:#fff}
+
+/* Shared headers */
+.top{background:var(--blue);color:#fff;padding:36px 16px 14px;display:flex;align-items:center;gap:10px}
+.top h1{margin:0;font-size:19px;flex:1}
+.top .back{background:none;color:#fff;font-size:22px;padding:0 6px 0 0}
+.body{flex:1;overflow-y:auto}
+
+/* Dashboard (GCrash home clone, sized in cqw so it scales like the screenshot) */
+#s-dash{background:#fff;font-family:"Montserrat","Segoe UI",system-ui,sans-serif}
+.dblue{background:#eef5ff;padding:0 3.4cqw 4cqw}
+.stat{display:flex;justify-content:space-between;align-items:center;padding:4.4cqw 3.2cqw 0;font-weight:700;font-size:4cqw;color:#000}
+.stat span:last-child{display:flex;gap:1.6cqw;align-items:center}
+.hello{display:flex;align-items:center;gap:2cqw;margin:4cqw 0 3.6cqw;padding:0 .5cqw}
+.glogo{display:grid;place-items:center;width:7cqw;height:7cqw;border-radius:50%;background:#0a63ff;color:#fff;font-weight:800;font-size:4.6cqw;box-shadow:0 0 0 .7cqw #cfe0ff}
+.hello b{flex:1;font-size:4.8cqw;font-weight:800;color:#0b3ba8}
+.help{background:#0a63ff;color:#fff;font-weight:800;font-size:2.3cqw;padding:1.2cqw 2.6cqw;border-radius:99px}
+.balcard{position:relative;background:#1a73ff;border-radius:2cqw;padding:3.2cqw 3.6cqw;min-height:18cqw;color:#fff}
+.balcard small{display:flex;align-items:center;gap:1.4cqw;font-size:2.3cqw;font-weight:600;letter-spacing:.06em;color:#9fc3ff}
+.balcard small svg{width:3.6cqw}
+.balcard .amt{font-size:7.2cqw;font-weight:700;margin-top:1.4cqw;letter-spacing:-.01em}
+.cashin{position:absolute;right:3.6cqw;bottom:3.8cqw;display:flex;align-items:center;gap:2.2cqw;height:6.6cqw;padding:0 4.6cqw;background:#e6efff;color:#0a63ff;font-weight:700;font-size:3.6cqw;border-radius:99px}
+.cashin span{font-size:4.6cqw;font-weight:600}
+.svc{display:grid;grid-template-columns:repeat(4,1fr);row-gap:4.6cqw;margin-top:4.4cqw}
+.ic{position:relative;display:flex;flex-direction:column;align-items:center;gap:2.2cqw;background:none;color:#2a56c6;font-size:2.5cqw;font-weight:700}
+.ic svg{width:12.5cqw;height:12.5cqw}
+.ic:active svg{opacity:.55}
+.ic .new{position:absolute;top:-1.4cqw;right:1.2cqw;background:#e5192d;color:#fff;font-style:normal;font-size:2cqw;font-weight:700;padding:.5cqw 1.6cqw;border-radius:1.2cqw}
+.viewall{text-align:center;color:#0a63ff;font-weight:700;font-size:3.5cqw;margin-top:5cqw;cursor:pointer}
+.exc{padding-top:4.4cqw}
+.exc h2{margin:0 5.6cqw 3cqw;font-size:4.7cqw;font-weight:800;color:#0c2f8c}
+.cx{display:flex;gap:3cqw;overflow-x:auto;padding:0 3.4cqw 26cqw;scroll-snap-type:x mandatory}
+.bnr{position:relative;flex:0 0 93%;height:46cqw;border-radius:2cqw;overflow:hidden;scroll-snap-align:start;color:#fff;cursor:pointer}
+.bnr::before{content:"";position:absolute;left:-26cqw;top:-34cqw;width:110cqw;height:110cqw;border-radius:50%;border:2.4cqw solid #ffffff14}
+.bnr i{position:absolute;left:5cqw;top:7cqw;width:27cqw;height:56cqw;border:1.1cqw solid #151a33;border-radius:4cqw;background:linear-gradient(#0a63ff 0 9cqw,#fff 9cqw)}
+.bnr em{position:absolute;left:30cqw;top:26cqw;width:21cqw;height:44cqw;border:1.1cqw solid #151a33;border-radius:3.4cqw;background:linear-gradient(#ff8a3c 0 14cqw,#fff 14cqw)}
+.bnr b{position:absolute;right:5cqw;top:50%;transform:translateY(-50%);font-size:7cqw;font-weight:800;line-height:1.15;text-align:right}
+.bnr u{display:inline-grid;place-items:center;width:13cqw;height:13cqw;margin-left:1cqw;border:1.8cqw solid #fff;border-radius:50%;font-size:8cqw;text-decoration:none;vertical-align:middle}
+.bn{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:flex-end;background:#fff;border-top:1px solid #e3e8f4;padding:2.4cqw 1cqw 2.2cqw;box-shadow:0 -1cqw 3cqw #0a63ff14}
+.bn button{flex:1;display:flex;flex-direction:column;align-items:center;gap:1cqw;background:none;color:#a8b9d8;font-size:2.5cqw;font-weight:700}
+.bn button.cur{color:#0a63ff}
+.bn svg{width:6.2cqw;height:6.2cqw}
+.bn .qr{margin-top:-9cqw}
+.bn .qr i{display:grid;place-items:center;width:14.4cqw;height:14.4cqw;border-radius:50%;background:#fff;border:1.1cqw solid #0a63ff;color:#0a63ff;box-shadow:0 1cqw 3cqw #0a63ff44}
+.bn .qr svg{width:7cqw;height:7cqw}
+/* Forms */
+.form{padding:20px 18px;display:flex;flex-direction:column;gap:14px}
+.form label{font-size:13px;font-weight:700;color:var(--muted)}
+.form input{width:100%;margin-top:6px;padding:14px;font-size:18px;border:2px solid #d5dcee;border-radius:12px;outline:0;color:var(--ink)}
+.form input:focus{border-color:var(--blue)}
+.err{color:var(--bad);font-size:13px;font-weight:700;min-height:18px}
+.form input.on{border-color:var(--blue)}
+.sticky{align-self:center;width:90%;background:#fff176;color:#4a3b00;padding:14px 14px 16px;font:700 14px/1.4 "Comic Sans MS","Segoe Print","Bradley Hand",cursive;box-shadow:0 8px 14px #0003;transform:rotate(-2deg);border-radius:2px 2px 16px 2px;position:relative;text-align:center}
+.sticky::before{content:"📌";position:absolute;top:-14px;left:50%;margin-left:-10px;font-size:20px}
+.sticky b{font-size:20px}
+.pk .wide{grid-column:span 3}
+.pad{background:#eef3ff;padding:10px 12px;border-top:1px solid #d5dcee}
+.pk{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pk button{background:#fff;color:var(--blue-d);font-size:22px;font-weight:800;padding:12px 0;border-radius:12px;box-shadow:0 2px 0 #c9d6f2}
+.pk button:active{transform:translateY(2px);box-shadow:none}
+.pk .fn{background:var(--blue);color:#fff;font-size:15px;box-shadow:0 2px 0 var(--blue-d)}
+.foot{padding:14px 18px 18px}
+.btn{width:100%;background:var(--blue);color:#fff;padding:15px;border-radius:99px;font-size:16px;font-weight:800}
+.btn.ghost{background:#fff;color:var(--blue);border:2px solid var(--blue)}
+.row{display:flex;gap:10px}.row .btn{flex:1}
+.sum{margin:20px 18px;background:var(--blue-l);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:10px}
+.sum p{margin:0;display:flex;justify-content:space-between;font-size:14px}.sum b{font-size:15px}
+
+/* Result */
+#s-result .body{padding:0 16px 16px;text-align:center}
+#s-result .rank{margin:8px 0 2px}
+.tick{width:68px;height:68px;margin:20px auto 6px;border-radius:50%;background:var(--ok);color:#fff;font-size:38px;display:grid;place-items:center}
+.rank{display:inline-block;background:var(--blue);color:#fff;font-weight:900;padding:7px 16px;border-radius:99px;margin:6px 0 12px}
+.time{font:900 30px ui-monospace,monospace;color:var(--blue-d)}
+.board{text-align:left;margin:12px 0;background:var(--blue-l);border-radius:14px;padding:10px 14px}
+.board h3{margin:0 0 6px;font-size:14px}
+.board ol{margin:0;padding:0;list-style:none;font-size:14px}
+.board li{display:flex;gap:12px;align-items:center;padding:5px 0;font-family:ui-monospace,monospace}
+.board li em{font-style:normal}
+.board small{margin-left:auto;background:var(--blue);color:#fff;border-radius:99px;padding:1px 9px;font:800 10px system-ui,sans-serif}
+.board li.me{color:var(--blue);font-weight:900}
+
+/* Layers */
+.layer{position:absolute;inset:0;z-index:20;background:#000b}
+#adsLeft{position:absolute;top:12px;left:0;right:0;text-align:center;color:#fff;font-size:12px;font-weight:800;pointer-events:none}
+.ad{position:absolute;left:3%;right:3%;top:11%;bottom:10%;border-radius:16px;background:var(--bg);color:#fff;text-align:center;display:flex;flex-direction:column;padding:14px 14px 0;box-shadow:0 10px 36px #000a;pointer-events:none}
+.ad.top{pointer-events:auto}
+.ad .hd{display:flex;align-items:center;gap:8px;padding-right:46px;flex-wrap:nowrap}
+.gpill{display:flex;align-items:center;gap:6px;background:#fff;color:#0a63ff;font-weight:900;font-size:20px;padding:5px 14px 5px 6px;border-radius:99px}
+.gpill b{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:#0a63ff;color:#fff;font-size:16px}
+.pc{background:#fff;color:#d6232a;font:900 9px/1 system-ui,sans-serif;padding:5px 6px;border-radius:4px;white-space:nowrap}
+.ttl{margin-top:20px}
+.pre{font-size:17px;font-weight:800}.post{font-size:19px;font-weight:800}
+.big{font-weight:900;line-height:1.05;letter-spacing:-2px;margin:2px 0}
+.ad .cta{display:block;margin:14px auto 0;background:#ff6f6f;color:#fff;font-weight:800;font-size:17px;padding:13px 36px;border-radius:99px;box-shadow:0 4px 0 #d94b4b}
+.ad .agree{display:flex;gap:10px;align-items:center;margin:12px 4px 0;padding:8px 10px;border-radius:10px;background:#ffffff2e;font-size:12px;font-weight:700;text-align:left}
+.ad .agree input{width:24px;height:24px;flex:none;accent-color:#ff6f6f}
+.ad .note{align-self:center;margin-top:10px;font-size:12px;font-weight:800;background:#000a;padding:4px 12px;border-radius:99px}
+.art{position:relative;flex:1;margin:8px -14px 0;overflow:hidden;border-radius:0 0 16px 16px}
+.ped{position:absolute;right:6%;bottom:-20px;width:44%;height:40%;background:#fff;border-radius:14px 14px 0 0}
+.fig{position:absolute;left:36%;bottom:-8px;font-size:112px;line-height:1}
+.prop{position:absolute;right:13%;bottom:36%;font-size:56px;line-height:1}
+.ad .fine{position:absolute;left:12px;bottom:8px;width:36%;font-size:8px;line-height:1.35;color:#fffd;text-align:left}
+.ad .later{position:absolute;left:0;right:0;bottom:-40px;background:none;color:#fff;font-size:16px;font-weight:700;padding:6px}
+.ad .later.wait{opacity:.45}
+.x{position:absolute;width:34px;height:34px;border-radius:50%;background:#fff;color:#111;border:2px solid #111;font-size:17px;font-weight:900;line-height:1;padding:0;z-index:3;box-shadow:0 2px 8px #0007;display:grid;place-items:center}
+.x.tr{top:10px;right:10px}.x.br{bottom:10px;right:10px}.x.bl{bottom:70px;left:10px}.x.mr{top:46%;right:10px}
+.x.tx{position:static;display:inline-block;width:auto;height:auto;background:#ffd400;border-radius:6px;font-size:14px;padding:4px 10px;margin:0 3px;vertical-align:middle;box-shadow:none}
+.x.locked{background:#c9cfdd;color:#5b6580;border-color:#5b6580}
+.card input[type=range]{padding:0;border:0}
+.mg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.mg button{height:56px;border-radius:12px;background:var(--blue-l);font-size:26px;font-weight:900;color:var(--blue-d)}
+
+#video,#captcha,#modal,#freeze{position:absolute;inset:0;display:none;align-items:center;justify-content:center;text-align:center}
+#video{z-index:40;background:#000;color:#fff;flex-direction:column;gap:12px;padding:30px}
+#video.on,#captcha.on,#modal.on,#freeze.on{display:flex}
+#video .vt{font-size:24px;font-weight:900}
+#video .vb{width:80%;height:6px;background:#fff3;border-radius:6px;overflow:hidden}
+#video .vb i{display:block;height:100%;width:0;background:#ffd400}
+#captcha,#modal{z-index:50;background:#000b;padding:24px}
+.card{background:#fff;border-radius:18px;padding:20px;width:100%;display:flex;flex-direction:column;gap:12px}
+.card h3{margin:0}.card p{margin:0;color:var(--muted);font-size:14px}
+.card input{padding:12px;font-size:18px;text-align:center;text-transform:uppercase;letter-spacing:4px;border:2px solid #d5dcee;border-radius:10px;width:100%}
+#freeze{z-index:70;background:#0000;cursor:wait}
+#freeze .toast{background:#000d;color:#fff;padding:16px 22px;border-radius:14px;display:flex;align-items:center;gap:12px;font-weight:700}
+#freeze .spin{width:24px;height:24px;border-width:3px}
+@media (prefers-reduced-motion:reduce){.spin{animation-duration:2s}}
+</style>
+</head>
+<body>
+<div class="phone" id="phone">
+  <div id="hud" class="gone"></div>
+
+  <section class="screen active" id="s-home">
+    <div style="font-size:13px;font-weight:800;opacity:.85">GCrash Simulator</div>
+    <div class="logo" style="font-size:38px"><b>G<i>🐌</i></b>Crash</div><div class="by">Made by Charvin</div>
+    <div class="cap">We will do everything to make your transaction slower.</div>
+    <div class="how">
+      <b>How to play (it's super easy!)</b>
+      <ol>
+        <li>Tap Start and type the MPIN shown on screen.</li>
+        <li>Wave away a few friendly little popups.</li>
+        <li>Tap Send, then copy the name, number and amount from the sticky note.</li>
+        <li>Type the OTP from the text message. Done!</li>
+      </ol>
+      <small>Takes about a minute. Probably. Be fast!</small>
+    </div>
+    <button class="start" id="btnStart">Start</button>
+    <div id="homeBest" style="font-size:13px;font-weight:700;opacity:.9"></div>
+  </section>
+
+  <section class="screen" id="s-boot">
+    <div class="logo"><b>G<i>🐌</i></b>Crash</div><div class="by">Made by Charvin</div><div class="cap">We will do everything to make your transaction slower.</div>
+    
+    <div id="login">
+      <h2>Enter your MPIN</h2>
+      <small id="mpinHint"></small>
+      <div id="dots"><i></i><i></i><i></i><i></i></div>
+      <div id="mpinErr"></div>
+      <div class="keys" id="keys"></div>
+    </div>
+  </section>
+
+  <section class="screen" id="s-auth">
+    <div class="logo" style="font-size:30px"><b style="width:44px;height:44px;font-size:28px">G</b>Crash</div>
+    <h2>Authenticating</h2>
+    <div class="bar"><i id="authBar"></i></div>
+    <div id="authTxt">0%</div>
+  </section>
+
+  <section class="screen" id="s-dash">
+    <div class="body">
+      <div class="dblue">
+        <div class="stat"><span>9:41</span><span>
+          <svg viewBox="0 0 20 14" style="width:5cqw"><rect x="0" y="9" width="3" height="5" rx="1"/><rect x="5" y="6" width="3" height="8" rx="1"/><rect x="10" y="3" width="3" height="11" rx="1"/><rect x="15" y="0" width="3" height="14" rx="1"/></svg>
+          <svg viewBox="0 0 20 14" style="width:5cqw" fill="none" stroke="#000" stroke-width="2.2" stroke-linecap="round"><path d="M1 5c5-5 13-5 18 0M4 8.5c3.5-3 8.5-3 12 0M7.5 12c1.5-1.2 3.5-1.2 5 0"/></svg>
+          <svg viewBox="0 0 28 14" style="width:7cqw"><rect x=".5" y=".5" width="23" height="13" rx="4" fill="none" stroke="#000" opacity=".4"/><rect x="2" y="2" width="20" height="10" rx="2.5"/><rect x="25" y="4.5" width="2" height="5" rx="1" opacity=".5"/></svg>
+        </span></div>
+        <div class="hello"><span class="glogo">G</span><b>Hello!</b><button class="help mt">HELP</button></div>
+        <div class="balcard">
+          <small>AVAILABLE BALANCE <svg viewBox="0 0 24 16" fill="none" stroke="#bcd5ff" stroke-width="2"><path d="M1 8c3-5 7-6 11-6s8 1 11 6c-3 5-7 6-11 6S4 13 1 8z"/><circle cx="12" cy="8" r="3"/></svg></small>
+          <div class="amt">₱ 50,000.00</div>
+          <button class="cashin mt"><span>+</span>Cash In</button>
+        </div>
+        <div class="svc" id="grid"></div>
+        <div class="viewall mt">View All Services</div>
+      </div>
+      <div class="exc">
+        <h2>GCrash Exclusives</h2>
+        <div class="cx">
+          <div class="bnr mt" style="background:linear-gradient(105deg,#0a63ff 20%,#4b3a96)"><i></i><em></em><b>Life is <u>G</u></b></div>
+          <div class="bnr mt" style="background:linear-gradient(105deg,#f2711c,#d94b8a)"><i></i><em></em><b>Borrow now,<br>panic later</b></div>
+          <div class="bnr mt" style="background:linear-gradient(105deg,#0a8fd8,#12b76a)"><i></i><em></em><b>Refer a friend,<br>lose a friend</b></div>
+        </div>
+      </div>
+    </div>
+    <nav class="bn" id="bnav"></nav>
+  </section>
+
+  <section class="screen" id="s-send">
+    <div class="top"><button class="back" id="sendBack" aria-label="Back">‹</button><h1>Express Send</h1></div>
+    <div class="body form">
+      <div class="sticky" id="sticky"></div>
+      <label>Send to number<input id="inNum" readonly inputmode="none" autocomplete="off" placeholder="09XXXXXXXXX"></label>
+      <label>Amount (PHP)<input id="inAmt" readonly inputmode="none" autocomplete="off" placeholder="0"></label>
+      <div class="err" id="sendErr"></div>
+    </div>
+    <div class="pad gone" id="pad"><div class="pk" id="padKeys"></div></div>
+    <div class="foot"><button class="btn" id="btnNext">Next</button></div>
+  </section>
+
+  <section class="screen" id="s-confirm">
+    <div class="top"><h1>Confirmation</h1></div>
+    <div class="body">
+      <div class="sum">
+        <p>Send to <b id="cNum"></b></p>
+        <p>Amount <b id="cAmt"></b></p>
+        <p>Express fee <b>₱0.00</b></p>
+      </div>
+    </div>
+    <div class="foot"><div class="row" id="btnRow">
+      <button class="btn ghost" id="btnCancel">Cancel</button>
+      <button class="btn" id="btnConfirm">Confirm</button>
+    </div></div>
+  </section>
+
+  <section class="screen" id="s-otp">
+    <div class="top"><h1>Verify transaction</h1><span id="otpBatt" class="gone">🪫 10%</span></div>
+    <div class="body form">
+      <div style="font-size:14px;color:var(--muted)">For your security, enter the 6-digit one-time PIN we just sent you. The message only stays on screen for a few seconds. Read fast.</div>
+      <label>One-time PIN<input id="inOtp" inputmode="numeric" autocomplete="off" placeholder="000000"></label>
+      <div class="err" id="otpErr"></div>
+      <button class="link" id="btnResend">Didn't get it? Resend OTP</button>
+    </div>
+    <div class="foot"><button class="btn" id="btnOtp">Submit</button></div>
+  </section>
+
+  <section class="screen" id="s-result">
+    <div class="rtop"><div class="logo" style="font-size:22px"><b style="width:30px;height:30px;font-size:19px">G</b>Crash</div></div>
+    <div class="body rbody">
+      <div class="ticket">
+        <div class="rtick">✓</div>
+        <div class="rttl">Express Send</div>
+        <div class="rsub">Money sent successfully</div>
+        <div class="ramt" id="rAmt"></div>
+        <div class="rrow"><span>Sent to</span><b id="rNum"></b></div>
+        <div class="rrow"><span>Fee</span><b>₱0.00</b></div>
+        <div class="rrow"><span>Date &amp; time</span><b id="rDate"></b></div>
+        <div class="rrow"><span>Ref. no.</span><b id="rRef"></b></div>
+        <div class="rdiv"></div>
+        <div class="rsub">Total time taken</div>
+        <div class="time" id="rTime"></div>
+        <div class="rsub" id="rBreak"></div>
+        <div class="rank" id="rRank"></div>
+      </div>
+      <div class="board"><h3>🏆 Leaderboard · top 5 fastest</h3><ol id="rBoard"></ol></div>
+      <button class="btn" id="btnAgain">Play Again</button>
+    </div>
+  </section>
+
+  <div id="sms"><b>💬 MESSAGES · now</b><span id="smsText"></span></div>
+  <div id="lowbat"><div class="ios"><div class="ios-t"><b>Low Battery</b><span>10% of battery remaining.</span></div><button id="btnBattLP">Low Power Mode</button><button id="btnBattClose">Close</button></div></div>
+
+  <div id="sure"><div class="card"><h3 id="sureT"></h3><p id="sureP"></p><div id="sureRow"><button class="btn" id="sureYes">Yes</button><button class="btn ghost" id="sureNo">No</button></div></div></div>
+  <div class="layer gone" id="popLayer"><div id="adsLeft"></div></div>
+  <div id="video"><div style="font-size:12px;opacity:.7">Ad &middot; cannot be skipped</div><div class="vt" id="vt"></div><div class="vb"><i id="vbar"></i></div><div id="vcount"></div></div>
+  <div id="captcha"><div class="card"><h3 id="miniT"></h3><p id="miniP"></p><div id="miniB"></div><div class="err" id="miniE"></div></div></div>
+  <div id="modal"><div class="card"><h3 id="mTitle"></h3><p id="mText"></p><button class="btn" id="mOk">OK</button></div></div>
+  <div id="freeze"><div class="toast"><div class="spin"></div>Loading, Please Wait...</div></div>
+</div>
+
+<script>
+"use strict";
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const rnd=n=>Math.floor(Math.random()*n), pick=a=>a[rnd(a.length)];
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=rnd(i+1);[a[i],a[j]]=[a[j],a[i]]}return a};
+const go=id=>$$('.screen').forEach(s=>s.classList.toggle('active',s.id===id));
+
+/* ---------- Timer ---------- */
+const T={start:0,raf:0};
+const pad=(n,l=2)=>String(n).padStart(l,'0');
+function parts(ms){return {m:Math.floor(ms/60000),s:Math.floor(ms%60000/1000),ms:Math.floor(ms%1000)}}
+function fmt(ms){const p=parts(ms);return `${pad(p.m)}:${pad(p.s)}.${pad(p.ms,3)}`}
+function startTimer(){
+  T.start=performance.now();$('#hud').classList.remove('gone');
+  const tick=()=>{$('#hud').textContent='⏱ '+fmt(performance.now()-T.start);T.raf=requestAnimationFrame(tick)};tick();
+}
+function stopTimer(){cancelAnimationFrame(T.raf);return performance.now()-T.start}
+
+/* ---------- Shared overlays ---------- */
+function modal(title,text){
+  $('#mTitle').textContent=title;$('#mText').textContent=text;$('#modal').classList.add('on');
+}
+$('#mOk').onclick=()=>$('#modal').classList.remove('on');
+
+function playVideo(cb){
+  const brands=['🍔 Burger Barn: now with 12% more burger','💸 QuickCash: your future salary, today','🚀 PesoCoin: sir, this is a Wendy\'s','🛡️ SafeGuard: insuring your insurance'];
+  $('#vt').textContent=pick(brands);$('#video').classList.add('on');
+  const bar=$('#vbar');bar.style.transition='none';bar.style.width='0';bar.offsetWidth;bar.style.transition='width 3s linear';bar.style.width='100%';
+  let n=3;$('#vcount').textContent='Ad ends in 3s';
+  const iv=setInterval(()=>{n--;$('#vcount').textContent=`Ad ends in ${n}s`},1000);
+  setTimeout(()=>{clearInterval(iv);$('#video').classList.remove('on');cb&&cb()},3000);
+}
+
+/* Penalty mini-games: each run(body, win, fail) builds its own UI */
+const MINI=[
+{t:'Slide to verify',p:'Set the slider to the target number.',run(b,win,fail){
+  const tg=10+rnd(81);
+  b.innerHTML=`<div style="font:900 28px ui-monospace">Target: ${tg}</div><input type="range" min="0" max="100" value="0" style="width:100%;margin:14px 0"><div style="font-weight:800;margin-bottom:8px">0</div><button class="btn">Lock in</button>`;
+  const r=b.querySelector('input'),v=r.nextElementSibling;r.oninput=()=>v.textContent=r.value;
+  b.querySelector('button').onclick=()=>Math.abs(r.value-tg)<=2?win():fail('Off by '+Math.abs(r.value-tg)+'. Try again!');
+}},
+{t:'Feed the dog 🐶',p:'Tap the bone 8 times before he gets hangry!',run(b,win,fail){
+  let n=0;
+  b.innerHTML=`<div style="font-size:54px">🐶</div><div class="bar" style="background:#dbe3f5;margin:8px 0 12px"><i style="background:#12b76a"></i></div><button class="btn">🦴 Feed</button>`;
+  const bar=b.querySelector('i'),dog=b.querySelector('div');
+  const iv=setInterval(()=>{n=Math.max(0,n-.35);bar.style.width=n/8*100+'%'},250);
+  const end=f=>{clearInterval(iv);clearTimeout(to);f()};
+  const to=setTimeout(()=>end(()=>fail('The dog gave up. Try again!')),8000);
+  b.querySelector('button').onclick=()=>{n++;dog.textContent=n%2?'😋':'🐶';bar.style.width=n/8*100+'%';if(n>=8)end(win)};
+}},
+{t:'Quick maths',p:'Pick the right answer.',run(b,win,fail){
+  const a=2+rnd(9),c=2+rnd(9),ans=a*c,opts=shuffle([ans,ans+1+rnd(5),ans-1-rnd(5)]);
+  b.innerHTML=`<div style="font:900 30px ui-monospace;margin-bottom:10px">${a} × ${c} = ?</div><div class="row">${opts.map(o=>`<button class="btn" data-o="${o}">${o}</button>`).join('')}</div>`;
+  b.onclick=e=>{const o=e.target.dataset.o;if(o===undefined)return;b.onclick=null;+o===ans?win():fail('Nope, that was wrong.')};
+}},
+{t:'Whack-a-mole 🔨',p:'Hit 5 moles in 8 seconds.',run(b,win,fail){
+  let hits=0,cur=-1;
+  b.innerHTML=`<div class="mg">${'<button></button>'.repeat(9)}</div>`;
+  const cells=[...b.querySelectorAll('button')];
+  const show=()=>{cells.forEach(c=>c.textContent='');cur=rnd(9);cells[cur].textContent='🐹'};
+  const iv=setInterval(show,750);
+  const end=f=>{clearInterval(iv);clearTimeout(to);f()};
+  const to=setTimeout(()=>end(()=>fail('Too slow!')),8000);
+  cells.forEach((c,i)=>c.onclick=()=>{if(i!==cur)return;hits++;c.textContent='💥';cur=-1;if(hits>=5)end(win)});
+  show();
+}},
+{t:'Tap in order',p:'Tap 1 to 6 in order, as fast as you can.',run(b,win,fail){
+  let nx=1;
+  b.innerHTML=`<div class="mg">${shuffle([1,2,3,4,5,6,0,0,0,0,0,0]).map(n=>`<button data-n="${n}">${n||''}</button>`).join('')}</div>`;
+  b.onclick=e=>{const n=+e.target.dataset.n;if(!n)return;if(n===nx){e.target.style.opacity=.25;if(++nx>6)win()}else{b.onclick=null;fail('Wrong order!')}};
+}},
+{t:'Odd one out',p:'Tap the emoji that is different. 3 rounds.',run(b,win,fail){
+  let round=0;
+  const pairs=[['🐶','🐕'],['😀','😃'],['🍎','🍅'],['🌕','🌝'],['🐱','🐈']];
+  const draw=()=>{
+    const [a,o]=pick(pairs),odd=rnd(9);
+    b.innerHTML=`<div class="mg">${Array.from({length:9},(_,i)=>`<button data-o="${i===odd?1:0}">${i===odd?o:a}</button>`).join('')}</div><div style="margin-top:8px;font-weight:800">Round ${round+1} of 3</div>`;
+  };
+  draw();
+  b.onclick=e=>{const o=e.target.dataset.o;if(o===undefined)return;
+    if(o==='1'){if(++round>=3){b.onclick=null;win()}else draw()}else{b.onclick=null;fail('Wrong one!')}};
+}},
+{t:'Green light',p:'Wait for the button to turn green, then tap it!',run(b,win,fail){
+  b.innerHTML='<button class="btn" style="background:#e5384f;padding:30px">Wait...</button>';
+  const btn=b.querySelector('button');let ready=false;
+  const to=setTimeout(()=>{ready=true;btn.style.background='#12b76a';btn.textContent='TAP NOW!'},1200+rnd(1800));
+  btn.onclick=()=>{clearTimeout(to);ready?win():fail('Too early! Patience.')};
+}},
+{t:'Memory pattern',p:'Watch the tiles light up, then repeat the order.',run(b,win,fail){
+  const cols=['#e5384f','#12b76a','#0a63ff','#f5b400'],seq=Array.from({length:4},()=>rnd(4));
+  let k=0,at=0,ready=false;
+  b.innerHTML=`<div class="mg" style="grid-template-columns:repeat(2,1fr)">${cols.map((c,i)=>`<button data-i="${i}" style="background:${c};opacity:.3;height:64px"></button>`).join('')}</div><div style="margin-top:8px;font-weight:800">Watch...</div>`;
+  const tiles=[...b.querySelectorAll('button')],say=t=>b.lastElementChild.textContent=t;
+  const iv=setInterval(()=>{
+    tiles.forEach(t=>t.style.opacity=.3);
+    if(k>=seq.length){clearInterval(iv);ready=true;say('Your turn!');return}
+    setTimeout(()=>tiles[seq[k++]].style.opacity=1,200);
+  },800);
+  b.onclick=e=>{const i=e.target.dataset.i;if(!ready||i===undefined)return;
+    if(+i===seq[at]){if(++at>=seq.length){b.onclick=null;win()}}else{b.onclick=null;fail('Wrong order!')}};
+}}
+];
+let lastMini=-1;
+function miniGame(cb){
+  if($('#captcha').classList.contains('on'))return;
+  let i;do{i=rnd(MINI.length)}while(i===lastMini);lastMini=i;
+  const g=MINI[i],card=$('#captcha .card'),b=$('#miniB');
+  const run=()=>{
+    b.onclick=null;$('#miniT').textContent=g.t;$('#miniP').textContent=g.p;$('#miniE').textContent='';
+    g.run(b,()=>{$('#captcha').classList.remove('on');cb&&cb()},msg=>{
+      $('#miniE').textContent=msg;card.classList.remove('shake');card.offsetWidth;card.classList.add('shake');setTimeout(run,800);
+    });
+  };
+  run();$('#captcha').classList.add('on');
+}
+
+async function freezeScreen(ms,cb){$('#freeze').classList.add('on');await sleep(ms);$('#freeze').classList.remove('on');cb&&cb()}
+
+/* ---------- State 1: boot + login ---------- */
+let mpin='',secret='';
+function buildKeypad(){
+  const keys=['1','2','3','4','5','6','7','8','9','⌫','0','✓'];
+  $('#keys').innerHTML=keys.map(k=>`<button data-k="${k}" class="${k==='✓'?'ok':''}">${k}</button>`).join('');
+  $('#keys').onclick=e=>{
+    const k=e.target.dataset.k;if(!k)return;
+    $('#mpinErr').textContent='';
+    if(k==='⌫')mpin=mpin.slice(0,-1);
+    else if(k==='✓')return submitMpin();
+    else if(mpin.length<4)mpin+=k;
+    drawDots();
+    if(mpin.length===4)submitMpin();
+  };
+}
+function drawDots(){$$('#dots i').forEach((d,i)=>d.classList.toggle('on',i<mpin.length))}
+function submitMpin(){
+  if(mpin===secret){authenticate();return}
+  $('#mpinErr').textContent='Incorrect MPIN. Check the hint above.';
+  $('#dots').classList.remove('shake');$('#dots').offsetWidth;$('#dots').classList.add('shake');
+  mpin='';drawDots();
+}
+function boot(){            // home screen, waiting for Start
+  secret=Array.from({length:4},()=>rnd(10)).join('');
+  $('#mpinHint').textContent='Your MPIN this run: '+[...secret].join(' ')+'  (then press ✓)';
+  mpin='';drawDots();$('#mpinErr').textContent='';
+  $('#login').classList.remove('up');$('#hud').classList.add('gone');
+  const best=board[0];
+  $('#homeBest').textContent=best?'Fastest so far: '+fmt(best.ms):'No runs yet. Be the first.';
+  go('s-home');
+}
+function begin(){           // Start tapped: timer starts and the MPIN pops up immediately
+  makeTarget();startTimer();go('s-boot');
+  requestAnimationFrame(()=>requestAnimationFrame(()=>$('#login').classList.add('up')));
+}
+$('#btnStart').onclick=begin;
+
+/* ---------- Authenticating (stalls at 99%) ---------- */
+function authenticate(){
+  go('s-auth');
+  const t0=performance.now();
+  const step=()=>{
+    const t=performance.now()-t0;
+    const p=t<3000?t/3000*99:t<6000?99:100;
+    $('#authBar').style.width=p+'%';
+    $('#authTxt').textContent=t>=3000&&t<6000?'99% ... almost there':Math.floor(p)+'%';
+    if(t<6000)requestAnimationFrame(step);else startGauntlet();
+  };step();
+}
+
+/* ---------- State 2: popup gauntlet (GCrash-style full promo cards) ---------- */
+const AD_COUNT=7;
+const CATS=[
+  {bg:'linear-gradient(160deg,#1a73ff,#0a55e0)',pc:['QuickCash','PesoLend'],pre:'Borrow up to',big:'₱50K',size:76,post:'in 5 minutes!',cta:'Apply Now',fig:'🙋‍♀️',prop:'💰'},
+  {bg:'linear-gradient(160deg,#5b3cff,#2a1fb8)',pc:['PesoCoin','MoonPay'],pre:'Get a chance to win',big:'₱1M',size:76,post:'in PesoCoin!',cta:'Buy Now',fig:'🧑‍💻',prop:'🪙'},
+  {bg:'linear-gradient(160deg,#0a8fd8,#0a55e0)',pc:['SafeGuard','InsureCo'],pre:'Protect everything for',big:'₱1/day',size:64,post:'every single day!',cta:'Get Covered',fig:'👩‍⚕️',prop:'🛡️'},
+  {bg:'linear-gradient(160deg,#1a73ff,#0a55e0)',pc:['ChickenCo','BurgerBarn'],pre:'Get up to',big:'50% OFF',size:56,post:'every payday!',cta:'Claim Voucher',fig:'🙋‍♀️',prop:'🍗'}
+];
+const LEGAL='₱500 min. spend. Terms and Conditions apply. Subject to approval. Void where prohibited.';
+const GATES=['agree','agree','timer','timer','none','none','none'];
+const X_POS=['tr','bl','br','mr'];   // always a visible corner X, no hidden ones
+let adsLeft=0;
+
+function unlock(ad){
+  ad.querySelectorAll('.x').forEach(x=>{x.classList.remove('locked');x.textContent='✕'});
+  const n=ad.querySelector('.note');
+  if(n){n.textContent='✔ Unlocked. Tap the ✕ to close.';n.style.color='#9dffc8'}
+}
+function startRemind(ad){
+  const b=ad.querySelector('.later');let n=5;
+  b.classList.add('wait');b.textContent=`Remind me later (${n})`;
+  const iv=setInterval(()=>{
+    if(!ad.isConnected)return clearInterval(iv);
+    n--;
+    if(n>0)b.textContent=`Remind me later (${n})`;
+    else{clearInterval(iv);b.classList.remove('wait');b.textContent='Remind me later';ad.dataset.ready='1'}
+  },1000);
+}
+function activate(ad){
+  ad.classList.add('top');startRemind(ad);
+  if(ad.dataset.gate!=='timer')return;
+  let n=3;const note=ad.querySelector('.note');
+  const iv=setInterval(()=>{
+    if(!ad.isConnected)return clearInterval(iv);
+    n--;
+    if(n>0){ad.querySelectorAll('.x').forEach(x=>x.textContent=n);note.textContent=`⏳ ✕ unlocks in ${n}s`}
+    else{clearInterval(iv);unlock(ad)}
+  },1000);
+}
+function buildAd(i,xPos,gate){
+  const c=CATS[i%4],ad=document.createElement('div'),lock=gate==='none'?'':' locked',lbl=gate==='timer'?'3':'✕';
+  ad.className='ad';ad.dataset.w='0';ad.dataset.gate=gate;
+  ad.style.cssText=`--bg:${c.bg};z-index:${i+1}`;
+  const chip=`<span class="x tx${lock}" role="button" aria-label="Close">${lbl}</span>`;
+  const btn=xPos==='tx'?'':`<button class="x ${xPos}${lock}" aria-label="Close">${lbl}</button>`;
+  const agree=gate==='agree'?'<label class="agree"><input type="checkbox">I agree to the Terms &amp; Conditions and to see more ads</label>':'';
+  const note=gate==='agree'?'<div class="note">🔒 Tick the box above to unlock ✕</div>':gate==='timer'?'<div class="note">⏳ ✕ unlocks in 3s</div>':'';
+  ad.innerHTML=`${btn}
+    <div class="hd"><div class="gpill"><b>G</b>GCrash</div>${c.pc.map(p=>`<span class="pc">${p}</span>`).join('')}</div>
+    <div class="ttl"><div class="pre">${c.pre}</div><div class="big" style="font-size:${c.size}px">${c.big}</div><div class="post">${c.post}</div></div>
+    <button class="cta">${c.cta}</button>${agree}${note}
+    <div class="art"><div class="ped"></div><span class="fig">${c.fig}</span><span class="prop">${c.prop}</span><div class="fine">${LEGAL}${xPos==='tx'?' '+chip:''}</div></div>
+    <button class="later">Remind me later</button>`;
+  const box=ad.querySelector('.agree input');
+  if(box)box.onchange=()=>{if(box.checked)unlock(ad)};
+  ad.addEventListener('click',e=>{
+    const x=e.target.closest('.x');
+    if(x){
+      if(!x.classList.contains('locked'))return miniGame(()=>closeAd(ad));
+      const n=ad.querySelector('.note');n.classList.remove('shake');n.offsetWidth;n.classList.add('shake');return playVideo();
+    }
+    const l=e.target.closest('.later');
+    if(l){
+      if(ad.dataset.ready)return closeAd(ad);   // backup close after 5s
+      l.classList.remove('shake');l.offsetWidth;l.classList.add('shake');return playVideo();
+    }
+    if(e.target.closest('.agree'))return;   // ticking the box is always safe
+    wrongClick(ad);                        // CTA, "Remind me later", anywhere else = ad click
+  });
+  return ad;
+}
+function wrongClick(ad){
+  const w=+ad.dataset.w+1;ad.dataset.w=w;
+  playVideo(()=>miniGame());
+}
+function closeAd(ad){
+  ad.remove();adsLeft--;
+  const rest=$$('#popLayer .ad');
+  if(rest.length){activate(rest[rest.length-1]);$('#adsLeft').textContent=`${adsLeft} popup${adsLeft>1?'s':''} left`}
+  else $('#popLayer').classList.add('gone');
+}
+function startGauntlet(){
+  go('s-dash');
+  const layer=$('#popLayer');$$('#popLayer .ad').forEach(a=>a.remove());
+  const gates=shuffle([...GATES]);
+  for(let i=0;i<AD_COUNT;i++){
+    const ad=buildAd(i,pick(X_POS),gates[i]);
+    if(!ad.querySelector('.x'))ad.insertAdjacentHTML('afterbegin','<button class="x tr" aria-label="Close">✕</button>');
+    layer.appendChild(ad);
+  }
+  adsLeft=AD_COUNT;$('#adsLeft').textContent=`${AD_COUNT} popups left`;
+  activate(layer.lastElementChild);layer.classList.remove('gone');
+}
+
+/* ---------- State 3: dashboard (GCrash home clone) ---------- */
+const B='#0a63ff',L='#e3edff';
+const ico=d=>`<svg viewBox="0 0 64 64" fill="none" stroke="${B}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+const TX=(x,y,sz,ch,col=B)=>`<text x="${x}" y="${y}" font-size="${sz}" font-weight="800" fill="${col}" stroke="none" text-anchor="middle" font-family="Montserrat,sans-serif">${ch}</text>`;
+const GRID=[
+  ['Send',ico(`<rect x="14" y="22" width="40" height="26" rx="4" fill="${L}"/>${TX(34,42,16,'₱')}<path d="M4 20l14-11v7h14v8H18v7z" fill="${B}" stroke="none"/><path d="M60 50L46 61v-7H32v-8h14v-7z" fill="${B}" stroke="none"/>`)],
+  ['Load',ico(`<rect x="22" y="6" width="26" height="52" rx="5" fill="#fff"/>${TX(38,40,16,'₱')}<path d="M4 32h18M12 24l-8 8 8 8"/>`)],
+  ['Transfer',ico(`<path d="M6 24L32 8l26 16z" fill="${B}" stroke="none"/><path d="M13 30v18M25 30v18M39 30v18M51 30v18" stroke-width="6"/><path d="M6 56h52" stroke-width="5"/>`)],
+  ['Bills',ico(`<path d="M20 8h30v50H20z" fill="#fff"/><path d="M28 24h16M28 33h16M28 42h10"/><circle cx="20" cy="14" r="9" fill="${B}" stroke="#eef5ff" stroke-width="2"/><path d="M16 14l3 3 6-6" stroke="#fff" stroke-width="2.6"/>`)],
+  ['Borrow',ico(`<rect x="16" y="8" width="38" height="26" rx="3" fill="${L}"/><path d="M22 18h20M22 25h12"/><circle cx="46" cy="36" r="9" fill="#eef5ff"/><path d="M46 31v6h4"/><path d="M4 46h10c6-2 14-2 20 2l-4 6H4"/>`)],
+  ['GSave',ico(`<ellipse cx="32" cy="42" rx="22" ry="14" fill="${L}"/><circle cx="36" cy="16" r="10" fill="${B}" stroke="none"/>${TX(36,21,13,'₱','#fff')}<path d="M20 32l-4-9 9 3"/><path d="M22 54v6M42 54v6"/>`)],
+  ['GInsure',ico(`<path d="M32 8l20 8v16c0 14-9 22-20 26C21 54 12 46 12 32V16z"/><circle cx="32" cy="27" r="7" fill="#7fa8ff" stroke="none"/><path d="M20 48c2-10 22-10 24 0z" fill="#7fa8ff" stroke="none"/><path d="M54 4v12M48 10h12"/>`)],
+  ['GInvest',ico(`<path d="M18 40h28l-4 18H22z" fill="${L}"/><path d="M32 40V28"/><circle cx="32" cy="16" r="10" fill="${B}" stroke="none"/>${TX(32,21,13,'₱','#fff')}<path d="M32 34c-6 0-9-3-10-7M32 34c6 0 9-3 10-7"/>`)],
+  ['GLife',ico(`<circle cx="32" cy="32" r="21" stroke="#9dbcff" stroke-dasharray="5 5"/>${TX(32,40,22,'G')}<circle cx="12" cy="14" r="4" fill="#e5192d" stroke="none"/><path d="M8 38h10v14H8z" fill="#e5192d" stroke="none"/><path d="M44 8h12l-3 11H46zM47 24h8" stroke="#e5192d"/><circle cx="50" cy="49" r="9" fill="#e5192d" stroke="none"/><path d="M47 44l8 5-8 5z" fill="#fff" stroke="none"/>`)],
+  ['A+ Rewards',ico(`<rect x="12" y="28" width="38" height="28" fill="${L}"/><rect x="8" y="20" width="46" height="9" fill="#fff"/><path d="M31 20v36M31 20c-9-12-18-2-9 0M31 20c9-12 18-2 9 0"/><path d="M55 6l2 5 5 1-4 3 1 5-5-3-5 3 1-5-4-3 5-1z" fill="#9dbcff" stroke="none"/>`)],
+  ['GForest',ico(`<path d="M10 54C8 28 26 8 56 8c0 28-18 48-46 46z"/><path d="M10 54L36 28"/><ellipse cx="46" cy="48" rx="5" ry="8" fill="#9dbcff" stroke="none"/>`)],
+  ['Cards',ico(`<rect x="8" y="12" width="38" height="26" rx="4" fill="${L}"/><rect x="18" y="24" width="38" height="28" rx="4" fill="#fff"/>${TX(30,45,16,'G')}`),true]
+];
+const nav=d=>`<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+const NAV=[
+  ['Home','<path d="M6 22L24 6l18 16M12 20v22h24V20"/>',' cur'],
+  ['Inbox','<rect x="6" y="10" width="36" height="28" rx="3"/><path d="M6 14l18 14 18-14"/>',''],
+  ['QR','<path d="M8 8h12v12H8zM28 8h12v12H28zM8 28h12v12H8zM28 28h4M36 28h4M28 36h12"/>',' qr'],
+  ['Transactions','<path d="M12 6h24v36H12z"/><path d="M18 16h12M18 24h12M18 32h7"/>',''],
+  ['Profile','<circle cx="24" cy="24" r="18"/><circle cx="24" cy="19" r="6"/><path d="M12 38c4-8 20-8 24 0"/>','']
+];
+function buildDash(){
+  $('#grid').innerHTML=GRID.map(([l,svg,isNew])=>`<button class="ic" data-l="${l}">${isNew?'<em class="new">New</em>':''}${svg}${l}</button>`).join('');
+  $('#grid').onclick=e=>{
+    const b=e.target.closest('.ic');if(!b)return;
+    if(b.dataset.l==='Send')freezeScreen(4000,()=>go('s-send'));
+    else adTap();
+  };
+  $('#bnav').innerHTML=NAV.map(([l,d,c])=>`<button class="mt${c}">${c.includes('qr')?`<i>${nav(d)}</i>`:nav(d)}${l}</button>`).join('');
+  $$('.mt').forEach(b=>b.onclick=adTap);
+}
+/* Every non-Send tap on the dashboard opens a GCrash-style sponsored popup */
+function adTap(){
+  const layer=$('#popLayer');
+  if(!layer.classList.contains('gone'))return;     // an ad is already open
+  $$('#popLayer .ad').forEach(a=>a.remove());
+  const ad=buildAd(rnd(4),pick(X_POS),'none');
+  layer.appendChild(ad);adsLeft=1;$('#adsLeft').textContent='Sponsored';
+  activate(ad);layer.classList.remove('gone');
+}
+
+/* ---------- State 4: send money (input lag) ---------- */
+function lagInput(el,max){
+  const st={shown:'',want:''};el._st=st;
+  el.addEventListener('input',()=>{
+    const raw=el.value;
+    if(raw.length>st.shown.length)st.want=(st.want+raw.slice(st.shown.length).replace(/\D/g,'')).slice(0,max);
+    else if(raw.length<st.shown.length)st.want=st.want.slice(0,-1);
+    el.value=st.shown;
+    const snap=st.want,g=st.gen;
+    setTimeout(()=>{if(st.gen!==g)return;st.shown=snap;el.value=snap},500);
+  });
+}
+function resetInput(el){const st=el._st;st.gen=(st.gen||0)+1;st.shown=st.want='';el.value=''}
+function lagSet(el,want){const st=el._st,g=st.gen;st.want=want;setTimeout(()=>{if(st.gen!==g)return;st.shown=want;el.value=want},500)}
+
+/* The sticky note: a random recipient and a nasty amount with centavos */
+const WHO=['Mama','Papa','Ate','Kuya','Lola','Tita','Bunso'];
+let target={who:'',num:'',amt:''};
+function makeTarget(){
+  let c=10+rnd(90);if(c%10===0)c++;
+  target={who:pick(WHO),num:'09'+Array.from({length:9},()=>rnd(10)).join(''),amt:`${100+rnd(900)}.${c}`};
+  $('#sticky').innerHTML=`📝 Send money to:<br><b>${target.who}</b><br>${target.num}<br>Amount: <b>₱${target.amt}</b>`;
+}
+function wrongSend(badNum,badAmt){
+  closePad();resetInput($('#inNum'));resetInput($('#inAmt'));$('#sendErr').textContent='';
+  const what=badNum&&badAmt?'recipient and amount':badNum?'recipient number':'amount';
+  go('s-dash');
+  modal('Wrong '+what+'!','Transaction cancelled and you were sent back home. Check the sticky note, but first, a mini-game.');
+  miniGame();
+}
+
+/* Scrambled on-screen keypad: digit positions are reshuffled every time it opens */
+let padEl=null;
+function openPad(el){
+  padEl=el;
+  [$('#inNum'),$('#inAmt')].forEach(i=>i.classList.toggle('on',i===el));
+  const isAmt=el===$('#inAmt'),d=shuffle([...(isAmt?'0123456789.':'0123456789')]);
+  const cells=isAmt?[...d,'⌫','Done']:[...d.slice(0,9),'⌫',d[9],'Done'];
+  $('#padKeys').innerHTML=cells.map(k=>`<button data-k="${k}" class="${k==='Done'||k==='⌫'?'fn':''}${isAmt&&k==='Done'?' wide':''}">${k}</button>`).join('');
+  $('#pad').classList.remove('gone');
+}
+function closePad(){padEl=null;[$('#inNum'),$('#inAmt')].forEach(i=>i.classList.remove('on'));$('#pad').classList.add('gone')}
+$('#padKeys').onclick=e=>{
+  const k=e.target.dataset.k;if(!k||!padEl)return;
+  if(k==='Done')return closePad();
+  const st=padEl._st,max=padEl===$('#inNum')?11:9;
+  if(k==='⌫')lagSet(padEl,st.want.slice(0,-1));
+  else if(st.want.length<max&&!(k==='.'&&st.want.includes('.'))&&!(st.want.includes('.')&&st.want.split('.')[1].length>=2))lagSet(padEl,st.want+k);
+};
+[$('#inNum'),$('#inAmt')].forEach(i=>i.addEventListener('click',()=>openPad(i)));
+$('#sendBack').onclick=()=>{closePad();go('s-dash')};
+$('#btnNext').onclick=()=>{
+  const num=$('#inNum')._st.shown,raw=$('#inAmt')._st.shown,amt=+raw,err=$('#sendErr');
+  if(!/^09\d{9}$/.test(num))return err.textContent='Number must be 11 digits and start with 09.';
+  if(!/^\d+(\.\d{1,2})?$/.test(raw)||!amt)return err.textContent='Enter a valid amount, like 123.45.';
+  if(amt>50000)return err.textContent='Insufficient balance (₱50,000.00 max).';
+  err.textContent='';
+  if(num!==target.num||amt.toFixed(2)!==target.amt)return wrongSend(num!==target.num,amt.toFixed(2)!==target.amt);
+  closePad();$('#cNum').textContent=num;$('#cAmt').textContent='₱'+amt.toLocaleString('en-PH',{minimumFractionDigits:2});
+  resetConfirm();go('s-confirm');
+};
+
+/* Confirm button dodges once */
+let swapped=false,swapTime=0;
+function resetConfirm(){
+  swapped=false;swapTime=0;
+  $('#btnRow').append($('#btnConfirm'));  // Cancel left, Confirm right
+}
+function dodge(){
+  if(swapped)return;
+  swapped=true;swapTime=performance.now();
+  $('#btnRow').insertBefore($('#btnConfirm'),$('#btnCancel'));
+}
+$('#btnConfirm').addEventListener('pointerenter',dodge);
+$('#btnConfirm').addEventListener('click',()=>{
+  if(performance.now()-swapTime<500)return;   // ignore the tap that triggered the swap
+  startOtp();
+});
+$('#btnCancel').onclick=()=>go('s-send');
+
+/* ---------- OTP (arrives as a short-lived SMS banner) ---------- */
+let otp='',smsTimer=0;
+function otpMessage(code,amt,num){
+  const big=()=>Math.floor(1e8+Math.random()*9e8);
+  return `GCrash Security Notice: Dear valued customer, we noticed a transaction of ₱${amt} to ${num.slice(0,4)}***${num.slice(-2)} (case no. ${big()}, batch ${1000+rnd(9000)}). NEVER share this with anyone, not even the GCrash team, your mother, or your dog. Your one-time PIN is ${code}, valid for 5 minutes or until you blink. If you did not request this, please ignore it, panic, or both. Support line 0${big()}. Ref ${10+rnd(90)}-${1000+rnd(9000)}.`;
+}
+function sendOtp(){
+  otp=String(100000+rnd(900000));
+  $('#smsText').textContent=otpMessage(otp,$('#cAmt').textContent.slice(1),$('#cNum').textContent);
+  const sms=$('#sms');sms.classList.add('show');
+  clearTimeout(smsTimer);smsTimer=setTimeout(()=>sms.classList.remove('show'),6000);
+}
+let lowBatt=false,battTimer=0;
+function showLowBatt(){
+  if(lowBatt)return;lowBatt=true;
+  resetInput($('#inOtp'));$('#otpErr').textContent='';   // the typed digits are wiped
+  $('#otpBatt').classList.remove('gone');$('#lowbat').classList.add('on');
+}
+$('#btnBattLP').onclick=$('#btnBattClose').onclick=()=>$('#lowbat').classList.remove('on');
+function startOtp(){
+  resetInput($('#inOtp'));$('#otpErr').textContent='';$('#otpBatt').classList.add('gone');
+  lowBatt=false;clearInterval(battTimer);const t0=performance.now();
+  battTimer=setInterval(()=>{                            // fires once you've typed 3 digits (or after 9s)
+    if(!$('#s-otp').classList.contains('active'))return clearInterval(battTimer);
+    if($('#inOtp')._st.shown.length>=3||performance.now()-t0>9000){clearInterval(battTimer);showLowBatt()}
+  },300);
+  go('s-otp');setTimeout(sendOtp,600);
+}
+/* Two "are you sure" popups whose Yes/No buttons keep swapping places. A wrong tap restarts the OTP. */
+let sureIv=0,sureStep=1;
+function askSure(step){
+  sureStep=step;
+  $('#sureT').textContent=step===1?'Are you sure?':'Do you want to send this?';
+  $('#sureP').textContent=step===1?'Last chance to back out. (Not really.)':`${$('#cAmt').textContent} to ${$('#cNum').textContent}`;
+  const row=$('#sureRow');row.classList.toggle('swp',Math.random()<.5);
+  clearInterval(sureIv);sureIv=setInterval(()=>row.classList.toggle('swp'),1200);
+  $('#sure').classList.add('on');
+}
+function closeSure(){clearInterval(sureIv);$('#sure').classList.remove('on')}
+$('#sureYes').onclick=()=>{closeSure();sureStep===1?askSure(2):finish()};
+$('#sureNo').onclick=()=>{closeSure();startOtp();$('#otpErr').textContent='You tapped No. Back to the start of the OTP!'};
+$('#btnResend').onclick=sendOtp;
+$('#btnOtp').onclick=()=>{
+  if($('#inOtp')._st.shown===otp)return askSure(1);
+  $('#otpErr').textContent='Incorrect OTP. A new one was sent. Good luck.';resetInput($('#inOtp'));sendOtp();
+};
+
+/* ---------- State 5: victory + leaderboard ---------- */
+const KEY='gcashSim.times.v1';
+let board=[];
+try{board=JSON.parse(localStorage.getItem(KEY))||[]}catch(e){board=[]}
+const saveBoard=()=>{try{localStorage.setItem(KEY,JSON.stringify(board))}catch(e){}};
+function rankFor(ms){return ms<40000?'Patience God':ms<60000?'Average Citizen':'Rage Quitter'}
+function finish(){
+  const ms=stopTimer(),p=parts(ms),id=Date.now();
+  board.push({id,ms});board.sort((a,b)=>a.ms-b.ms);board=board.slice(0,20);saveBoard();
+  $('#hud').classList.add('gone');$('#sms').classList.remove('show');
+  $('#rAmt').textContent=$('#cAmt').textContent;
+  $('#rNum').textContent=$('#cNum').textContent;
+  $('#rDate').textContent=new Date(id).toLocaleString('en-PH',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
+  $('#rRef').textContent=`${String(id).slice(-4)} ${100+rnd(900)} ${String(id).slice(-6)}`;
+  $('#rTime').textContent=fmt(ms);
+  $('#rBreak').textContent=`${p.m} min ${p.s} sec ${p.ms} ms`;
+  $('#rRank').textContent=rankFor(ms);
+  $('#rBoard').innerHTML=board.slice(0,5).map((b,i)=>`<li class="${b.id===id?'me':''}"><span>${['🥇','🥈','🥉','4','5'][i]}</span><em>${fmt(b.ms)}</em>${b.id===id?'<small>you</small>':''}</li>`).join('');
+  go('s-result');
+}
+$('#btnAgain').onclick=()=>{resetInput($('#inNum'));resetInput($('#inAmt'));$('#sendErr').textContent='';boot()};
+
+/* ---------- Init ---------- */
+lagInput($('#inNum'),11);lagInput($('#inAmt'),6);lagInput($('#inOtp'),6);
+/* No zooming on mobile: block double-tap and pinch zoom (taps still register instantly) */
+['gesturestart','gesturechange','gestureend'].forEach(ev=>document.addEventListener(ev,e=>e.preventDefault()));
+document.addEventListener('dblclick',e=>e.preventDefault());
+buildKeypad();buildDash();boot();
+</script>
+</body>
+</html>
